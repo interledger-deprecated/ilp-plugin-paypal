@@ -4,10 +4,14 @@ const koaBodyParser = require('koa-bodyparser')
 const request = require('co-request')
 const debug = require('debug')('ilp-plugin-paypal')
 const co = require('co')
+const EventEmitter = require('eventemitter2')
+const uuid = require('uuid4')
 
-module.exports = class PluginPaypal {
+module.exports = class PluginPaypal extends EventEmitter {
 
   constructor ({ host, port, client_id, secret, api }) {
+    super()
+
     this.host = host 
     this.client_id = client_id
     this.secret = secret
@@ -23,9 +27,34 @@ module.exports = class PluginPaypal {
       .use(this.router.allowedMethods())
 
     this.connect = co.wrap(this._connect).bind(this)
+    this.connected = false
+  }
+
+  getBalance () {
+    return Promise.resolve('100')
+  }
+
+  isConnected () {
+    return this.connected
+  }
+
+  getInfo () {
+    return Promise.resolve({
+      precision: 5,
+      scale: 2
+    })
+  }
+
+  getPrefix () {
+    return Promise.resolve('paypal.')
+  }
+
+  getAccount () {
+    return Promise.resolve('paypal.' + this.client_id)
   }
 
   * _connect () {
+    this.connected = true
     const that = this
 
     this.router.get('/', function * () {
@@ -43,6 +72,14 @@ module.exports = class PluginPaypal {
 
     this.app.listen(this.port)
     debug('listening on ' + this.port + '...')
+
+    yield this.emitAsync('connect')
+  }
+
+  disconnect () {
+    this.connected = false
+    this.emit('disconnect')
+    return Promise.resolve(null)
   }
 
   * _getToken () {
@@ -177,6 +214,16 @@ module.exports = class PluginPaypal {
 
     const amount = body.transactions[0].amount.total
     const memo = body.transactions[0].description.replace(/Memo: /, '')
+
+    this.emitAsync('incoming_transfer', {
+      id: uuid(),
+      amount: amount,
+      account: yield this.getAccount(),
+      ledger: yield this.getPrefix(),
+      data: {
+        memo: memo
+      }
+    })
 
     that.body = `
 <html>

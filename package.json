@@ -12,8 +12,10 @@
     "co": "^4.6.0",
     "co-request": "^1.0.0",
     "debug": "^2.4.5",
+    "eventemitter2": "^2.2.1",
     "koa": "^1.2.4",
     "koa-bodyparser": "^2.3.0",
-    "koa-router": "^5.4.0"
+    "koa-router": "^5.4.0",
+    "uuid4": "^1.0.0"
   }
 }
